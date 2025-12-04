@@ -4,7 +4,7 @@
  * @@encoding: utf-8
  * @@Author: qiurongcan
  * @Date: 2025-12-04 16:23:54
- * @LastEditTime: 2025-12-04 16:45:29
+ * @LastEditTime: 2025-12-04 17:08:38
 -->
 # px4_gazebo_fuel_sim
 
@@ -27,6 +27,16 @@
 参考仓库 `https://github.com/qiurongcan/Mid360_px4.git`中的配置方法进行配置，详细阅读
 
 ## FAST LIO2配置
+可以参考Fast LIO原仓库`https://github.com/hku-mars/FAST_LIO.git`进行配置，但是编译会有些报错，自己自行解决即可  
+
+如果觉得麻烦可以直接复制本仓库中的`FASTLIO`到工作空间下
+```shell
+mkdir -p ~/catkin_ws/src
+# 目前设定是已经将FASTLIO复制到 ~/catkin_ws/src 目录下
+cd ~/catkin_ws
+catkin_make
+source ./devel/setup.bash
+```
 
 ## FASTLIO为PX4无人机提供定位源
 这个节点的作用是转化FastLIO输出的`/Odometry`话题为`/mavros/vision_pose/pose`，给px4提供无GPS情况下的定位  
@@ -60,3 +70,6 @@ roslaunch camera_pose_node pose_tf.launch
 ## 无人机自动起飞（仿真环境）
 
 ## FUEL配置
+
+
+## 致谢
