@@ -4,7 +4,7 @@
  * @@encoding: utf-8
  * @@Author: qiurongcan
  * @Date: 2025-12-04 16:23:54
- * @LastEditTime: 2025-12-04 17:08:38
+ * @LastEditTime: 2025-12-04 18:29:05
 -->
 # px4_gazebo_fuel_sim
 
@@ -37,6 +37,11 @@ cd ~/catkin_ws
 catkin_make
 source ./devel/setup.bash
 ```
+```shell
+# 如果在真机部署，或者觉得太卡了，在mapping_mid360.launch中将rviz设置为false
+roslaunch fast_lio mapping_mid360.launch
+```
+
 
 ## FASTLIO为PX4无人机提供定位源
 这个节点的作用是转化FastLIO输出的`/Odometry`话题为`/mavros/vision_pose/pose`，给px4提供无GPS情况下的定位  
