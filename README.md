@@ -26,6 +26,12 @@
 
 参考仓库 `https://github.com/qiurongcan/Mid360_px4.git`中的配置方法进行配置，详细阅读
 
+**配置完成后**
+```shell
+# 这里默认无人机型号在mavros_posix_sitl.launch文件中替换成了iris_mid360
+roslaunch px4 mavrox_posix_sitl.launch
+```
+
 ## FAST LIO2配置
 可以参考Fast LIO原仓库`https://github.com/hku-mars/FAST_LIO.git`进行配置，但是编译会有些报错，自己自行解决即可  
 
@@ -75,6 +81,17 @@ roslaunch camera_pose_node pose_tf.launch
 ## 无人机自动起飞（仿真环境）
 
 ## FUEL配置
+将这个仓库中的`FUEL` 文件夹复制到 `~/catkin_ws/src/`目录下
+```shell
+cd ~/catkin_ws/
+catkin_make
+```
+**运行代码**
+```shell
+# 新建第一个终端 运行后出现一个rviz
+roslaunch exploration_manger exploration_manger.launch
 
-
+# 新建第二个终端
+rosrun exploration_manger fuel_nav
+```
 ## 致谢
