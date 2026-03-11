@@ -132,7 +132,7 @@ catkin_make
 
 ```shell
 # 新建第一个终端 运行后出现一个rviz
-roslaunch exploration_manger exploration_manger.launch
+roslaunch exploration_manger exploration.launch
 
 # 新建第二个终端
 rosrun exploration_manger fuel_nav
