@@ -43,6 +43,17 @@
 | 定位算法 | Fast LIO2                                  |
 | 搜索算法 | FUEL                                       |
 
+## 安装FUEL之前需要下载这个
+```shell
+git clone -b v2.7.1 https://github.com/stevengj/nlopt.git
+cd nlopt
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
 ## PX4+MID360配置
 
 参考仓库 `https://github.com/qiurongcan/Mid360_px4.git`中的配置方法进行配置，详细阅读
