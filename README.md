@@ -54,6 +54,12 @@ make
 sudo make install
 ```
 
+**需要安装的库**
+
+```shell
+sudo apt-get install libdw-dev
+```
+
 ## PX4+MID360配置
 
 参考仓库 `https://github.com/qiurongcan/Mid360_px4.git`中的配置方法进行配置，详细阅读
