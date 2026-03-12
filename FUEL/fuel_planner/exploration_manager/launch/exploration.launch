@@ -6,7 +6,7 @@
 
   <arg name="init_x" value="0"/>
   <arg name="init_y" value="0"/>
-  <arg name="init_z" value="1.0"/> 
+  <arg name="init_z" value="2.0"/> 
 
   <!-- topic of your odometry such as VIO or LIO -->
   <arg name="odom_topic" value="/Odometry" />
@@ -18,11 +18,11 @@
     <arg name="map_size_y_" value="$(arg map_size_y)"/>
     <arg name="map_size_z_" value="$(arg map_size_z)"/>
 
-    <arg name="box_min_x" value="-25.0"/>
-    <arg name="box_min_y" value="-25.0"/>
+    <arg name="box_min_x" value="-10.0"/>
+    <arg name="box_min_y" value="-10.0"/>
     <arg name="box_min_z" value=" -0.8"/>
-    <arg name="box_max_x" value="25.0"/>
-    <arg name="box_max_y" value="25.0"/>
+    <arg name="box_max_x" value="10.0"/>
+    <arg name="box_max_y" value="10.0"/>
     <arg name="box_max_z" value=" 2.0"/>
 
     <arg name="odometry_topic" value="$(arg odom_topic)"/>
