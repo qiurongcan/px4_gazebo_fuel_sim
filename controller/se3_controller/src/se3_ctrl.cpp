@@ -115,6 +115,7 @@ void se3Ctrl::execFSMCallback(const ros::TimerEvent &e){
             // 强制将期望加速度归零
             desired_state_.a.setZero();
             desired_state_.j.setZero();
+            // desired_state_.v(2) = 0.1; // 测试BUG复现的代码
             
             // 可选：如果你希望超时后飞机不仅悬停，而且完全锁定位置不被惯性带跑
             // 可以取消下面这行的注释（但这会导致轨迹断开时位置控制略微突变）

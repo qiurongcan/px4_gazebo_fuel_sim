@@ -32,6 +32,8 @@ private:
     ros::ServiceServer land_service_;
     ros::Timer exec_timer_;
 
+    ros::Time last_traj_rcv_time_; // 计时器
+
     mavros_msgs::State currState_;
     mavros_msgs::CommandBool arm_cmd;
     nav_msgs::Odometry desire_odom_;
