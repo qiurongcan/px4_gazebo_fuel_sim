@@ -7,23 +7,26 @@
 
 se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
 {
+    // 1 发布话题
     cmd_pub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 10);
     desire_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/desire_odom_pub", 10);
-    local_pos_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local", 10);
+    local_pos_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local", 10); // 位置控制
 
     set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
     arming_client_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
     land_service_ = nh_.advertiseService("/land", &se3Ctrl::landCallback, this);
 
+    // 2 订阅话题
     odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 10, &se3Ctrl::OdomCallback, this);
     imu_sub_ = nh_.subscribe<sensor_msgs::Imu>("/mavros/imu/data", 10, &se3Ctrl::IMUCallback, this);
     state_sub_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &se3Ctrl::StateCallback, this);
     desire_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/desire_odom", 10, &se3Ctrl::DesireOdomCallback, this);
     multiDOFJoint_sub_ = nh_.subscribe("/command/trajectory", 10, &se3Ctrl::multiDOFJointCallback, this);
 
+    // 3 循环主函数
     exec_timer_ = nh_.createTimer(ros::Duration(0.01), &se3Ctrl::execFSMCallback, this);
 
-    dynamic_tune_cb_type_ = boost::bind(&se3Ctrl::DynamicTuneCallback, this, _1, _2);
+    dynamic_tune_cb_type_ = boost::bind(&se3Ctrl::DynamicTuneCallback, this, _1, _2); // 动态回调参数
     dynamic_tune_server_.setCallback(dynamic_tune_cb_type_);
 
     nh_.param<bool>("enable_sim", sim_enable_, false);
@@ -38,9 +41,9 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
     init_pose_ << 0, 0, 0.5;
     node_state_ = WAITING_FOR_CONNECTED;
 
-    kp_p_ << 0.85, 0.85, 1.5;
-    kp_v_ << 1.5, 1.5, 1.5;
-    kp_a_ << 1.5, 1.5, 1.5;
+    kp_p_ << 0.85, 0.85, 1.5;   // [x y z] 位置增益
+    kp_v_ << 1.5, 1.5, 1.5;     // [x y z] 速度增益
+    kp_a_ << 1.5, 1.5, 1.5;     // [x y z] 加速度增益
     kp_q_ << 5.5, 5.5, 0.1;
     kp_w_ << 1.5, 1.5, 0.1;
 
@@ -65,6 +68,8 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
     desired_state_.p(2) = takeoff_height_;
     desired_state_.yaw = 0.0;
 
+    last_traj_rcv_time_ = ros::Time::now(); // <--- 初始化时间戳
+
     se3_controller_.init(hover_percent_, max_hover_percent_, enu_frame_, vel_in_body_);
     se3_controller_.setup(kp_p_, kp_v_, kp_a_, kp_q_, kp_w_,
                             kd_p_, kd_v_, kd_a_, kd_q_, kd_w_,
@@ -76,7 +81,7 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
 void se3Ctrl::execFSMCallback(const ros::TimerEvent &e){
     switch (node_state_)
     {
-    case WAITING_FOR_CONNECTED:{
+    case WAITING_FOR_CONNECTED:{ // 等待与飞控连接
         while(ros::ok() && !currState_.connected){
             ros::spinOnce();
         }
@@ -85,7 +90,7 @@ void se3Ctrl::execFSMCallback(const ros::TimerEvent &e){
         node_state_ = WAITING_FOR_OFFBOARD;
         break;
     }
-    case WAITING_FOR_OFFBOARD:{
+    case WAITING_FOR_OFFBOARD:{ // 等待切换OFFBOARD
         pubLocalPose(init_pose_);
         trigger_offboard();
         trigger_arm();
@@ -96,11 +101,26 @@ void se3Ctrl::execFSMCallback(const ros::TimerEvent &e){
         }
         break;
     } 
-    case MISSION_EXECUTION:{
+    case MISSION_EXECUTION:{ // 任务执行阶段
         if(fabs(odom_data_.p(2) - takeoff_height_) < 0.02 && !takeoffFlag_){
             ROS_INFO("takeoff completed");
             takeoffFlag_ = true;
-        } 
+        }
+
+        // --- 新增：超时保护逻辑 ---
+        // 如果当前时间距离上一次收到轨迹的时间超过 0.5 秒
+        if((ros::Time::now() - last_traj_rcv_time_).toSec() > 0.5){
+            // 强制将期望速度归零
+            desired_state_.v.setZero();
+            // 强制将期望加速度归零
+            desired_state_.a.setZero();
+            desired_state_.j.setZero();
+            
+            // 可选：如果你希望超时后飞机不仅悬停，而且完全锁定位置不被惯性带跑
+            // 可以取消下面这行的注释（但这会导致轨迹断开时位置控制略微突变）
+            // desired_state_.p = odom_data_.p; 
+        }
+
         Controller_Output_t output;
         if(se3_controller_.calControl(odom_data_, imu_data_, desired_state_, output)){
             send_cmd(output, true);
@@ -195,6 +215,7 @@ void se3Ctrl::StateCallback(const mavros_msgs::State::ConstPtr &msg){
 }
 
 void se3Ctrl::DesireOdomCallback(const nav_msgs::Odometry::ConstPtr &msg){
+    last_traj_rcv_time_ = ros::Time::now(); // <--- 更新接收时间：收到新指令了
     desire_odom_ = *msg;
 
     desired_state_.p(0) = msg->pose.pose.position.x;
@@ -219,6 +240,7 @@ void se3Ctrl::DesireOdomCallback(const nav_msgs::Odometry::ConstPtr &msg){
 
 void se3Ctrl::multiDOFJointCallback(const trajectory_msgs::MultiDOFJointTrajectory &msg) 
 {
+    last_traj_rcv_time_ = ros::Time::now(); // <--- 更新接收时间：收到新指令了
     // command/trajectory
     trajectory_msgs::MultiDOFJointTrajectoryPoint pt = msg.points[0];
 
