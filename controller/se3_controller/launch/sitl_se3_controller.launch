@@ -6,8 +6,36 @@
     <param name="geo_fence/x" value="15.0"/>
     <param name="geo_fence/y" value="15.0"/>
     <param name="geo_fence/z" value="3.0"/>
+    
+    <!-- 油门设置 -->
+    <param name="hover_percent" value="0.25"/>
+    <param name="max_hover_percent" value="0.75"/>
+
+    <!-- PID 超参数设置 -->
+    <!-- P -->
+    <rosparam param="kp_p">[0.85, 0.85, 1.5]</rosparam> <!--超调严重则调小-->
+    <rosparam param="kp_v">[1.5, 1.5, 1.5]</rosparam>
+    <rosparam param="kp_a">[1.5, 1.5, 1.5]</rosparam>
+    <rosparam param="kp_q">[5.5, 5.5, 0.1]</rosparam>
+    <rosparam param="kp_w">[1.5, 1.5, 0.1]</rosparam>
+    <!-- D -->
+    <rosparam param="kd_p">[0.1, 0.1, 0.0]</rosparam>
+    <rosparam param="kd_v">[0.0, 0.0, 0.0]</rosparam>
+    <rosparam param="kd_a">[0.0, 0.0, 0.0]</rosparam>
+    <rosparam param="kd_q">[0.0, 0.0, 0.0]</rosparam>
+    <rosparam param="kd_w">[0.0, 0.0, 0.0]</rosparam>
+
+    <!-- 误差上限 -->
+    <param name="limit_err_p" value="3.0" />
+    <param name="limit_err_v" value="2.0" />
+    <param name="limit_err_a" value="1.0" />
+    <param name="limit_d_err_p" value="3.5" />
+    <param name="limit_d_err_v" value="1.0" />
+    <param name="limit_d_err_a" value="1.0" />
+    
+
   </node>
 
-  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"></node>
+  <!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"></node> -->
 
 </launch>

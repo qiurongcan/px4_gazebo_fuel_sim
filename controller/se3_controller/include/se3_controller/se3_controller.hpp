@@ -324,7 +324,7 @@ public:
 		limitErr(err_v, -limit_err_v_, limit_err_v_);
 		if(have_last_err_ == false)
 			last_err_v_ = err_v;
-		Eigen::Vector3d d_err_v = err_v - last_err_v_;
+		Eigen::Vector3d d_err_v = err_v - last_err_v_; // 计算速度误差
 		limitErr(d_err_v, -limit_d_err_v_, limit_d_err_v_);
 		desired_state.a = desired_state.a - Kp_v_.asDiagonal() * err_v - Kd_v_.asDiagonal() * d_err_v + grav_vec_;
 		// std::cout << "err_p: " << err_p.transpose() << std::endl;
@@ -444,6 +444,7 @@ public:
 			double gamma = 1 / (rho_ + thr * P_ * thr);
 			double K = gamma * P_ * thr;
 			T_a_ = T_a_ + K * (est_a(2) - thr * T_a_);
+			std:: cout << "Hover Thrust: " << T_a_ << std::endl;
 			P_ = (1 - K * thr) * P_ / rho_;
 			T_a_ = std::max(T_a_, gravity_ / max_hover_percent_);
 			// printf("%6.3f,%6.3f,%6.3f,%6.3f\n", T_a_, gamma, K, P_);

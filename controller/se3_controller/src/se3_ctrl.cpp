@@ -5,8 +5,19 @@
 
 #include "se3_controller/se3_ctrl.h"
 
+
 se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
 {
+    auto load_vector3d = [&](const std::string& param_name, Eigen::Vector3d& vec, const Eigen::Vector3d& default_val) {
+        std::vector<double> temp;
+        // 如果成功读到参数，且数组大小刚好是3
+        if (nh_.getParam(param_name, temp) && temp.size() == 3) {
+            vec << temp[0], temp[1], temp[2];
+        } else {
+            vec = default_val; // 读取失败则使用默认值
+            ROS_WARN("Failed to load %s, using default values.", param_name.c_str());
+        }
+    };
     // 1 发布话题
     cmd_pub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 10);
     desire_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/desire_odom_pub", 10);
@@ -26,14 +37,37 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
     // 3 循环主函数
     exec_timer_ = nh_.createTimer(ros::Duration(0.01), &se3Ctrl::execFSMCallback, this);
 
-    dynamic_tune_cb_type_ = boost::bind(&se3Ctrl::DynamicTuneCallback, this, _1, _2); // 动态回调参数
-    dynamic_tune_server_.setCallback(dynamic_tune_cb_type_);
+    // rqt_reconfigure 动态赋值超参数
+    // dynamic_tune_cb_type_ = boost::bind(&se3Ctrl::DynamicTuneCallback, this, _1, _2); // 动态回调参数
+    // dynamic_tune_server_.setCallback(dynamic_tune_cb_type_);
 
     nh_.param<bool>("enable_sim", sim_enable_, false);
     nh_.param<double>("takeoff_height", takeoff_height_, 2.0);
     nh_.param<double>("geo_fence/x", geo_fence_[0], 10.0);
     nh_.param<double>("geo_fence/y", geo_fence_[1], 10.0);
     nh_.param<double>("geo_fence/z", geo_fence_[2], 4.0);
+    nh_.param<double>("hover_percent", hover_percent_, 0.25);
+    nh_.param<double>("max_hover_percent", max_hover_percent_, 0.65);
+    // --- 2. 加载所有 误差上限值
+    nh_.param("limit_err_p", limit_err_p_, 3.0);
+    nh_.param("limit_err_v", limit_err_v_, 2.0);
+    nh_.param("limit_err_a", limit_err_a_, 1.0);
+    nh_.param("limit_d_err_p", limit_d_err_p_, 3.5);
+    nh_.param("limit_d_err_v", limit_d_err_v_, 1.0);
+    nh_.param("limit_d_err_a", limit_d_err_a_, 1.0);
+
+    // PID 超参数
+    load_vector3d("kp_p", kp_p_, Eigen::Vector3d(0.85, 0.85, 1.5));
+    load_vector3d("kp_v", kp_v_, Eigen::Vector3d(1.5, 1.5, 1.5));
+    load_vector3d("kp_a", kp_a_, Eigen::Vector3d(1.5, 1.5, 1.5));
+    load_vector3d("kp_q", kp_q_, Eigen::Vector3d(5.5, 5.5, 0.1));
+    load_vector3d("kp_w", kp_w_, Eigen::Vector3d(1.5, 1.5, 0.1));
+
+    load_vector3d("kd_p", kd_p_, Eigen::Vector3d(0.1, 0.1, 0.0));
+    load_vector3d("kd_v", kd_v_, Eigen::Vector3d(0.0, 0.0, 0.0));
+    load_vector3d("kd_a", kd_a_, Eigen::Vector3d(0.0, 0.0, 0.0));
+    load_vector3d("kd_q", kd_q_, Eigen::Vector3d(0.0, 0.0, 0.0));
+    load_vector3d("kd_w", kd_w_, Eigen::Vector3d(0.0, 0.0, 0.0));
 
     enu_frame_ = true;
     vel_in_body_ = true;
@@ -41,27 +75,28 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
     init_pose_ << 0, 0, 0.5;
     node_state_ = WAITING_FOR_CONNECTED;
 
-    kp_p_ << 0.85, 0.85, 1.5;   // [x y z] 位置增益
-    kp_v_ << 1.5, 1.5, 1.5;     // [x y z] 速度增益
-    kp_a_ << 1.5, 1.5, 1.5;     // [x y z] 加速度增益
-    kp_q_ << 5.5, 5.5, 0.1;
-    kp_w_ << 1.5, 1.5, 0.1;
+    // 手动覆盖
+    // kp_p_ << 0.85, 0.85, 1.5;   // [x y z] 位置增益
+    // kp_v_ << 1.5, 1.5, 1.5;     // [x y z] 速度增益
+    // kp_a_ << 1.5, 1.5, 1.5;     // [x y z] 加速度增益
+    // kp_q_ << 5.5, 5.5, 0.1;
+    // kp_w_ << 1.5, 1.5, 0.1;
 
-    kd_p_ << 0.1, 0.1, 0.0;
-    kd_v_ << 0.0, 0.0, 0.0;
-    kd_a_ << 0.0, 0.0, 0.0;
-    kd_q_ << 0.0, 0.0, 0.0;
-    kd_w_ << 0.0, 0.0, 0.0;
+    // kd_p_ << 0.1, 0.1, 0.0;
+    // kd_v_ << 0.0, 0.0, 0.0;
+    // kd_a_ << 0.0, 0.0, 0.0;
+    // kd_q_ << 0.0, 0.0, 0.0;
+    // kd_w_ << 0.0, 0.0, 0.0;
 
-    limit_err_p_ = 3.0;
-    limit_err_v_ = 2.0;
-    limit_err_a_ = 1.0;
-    limit_d_err_p_ = 3.5;
-    limit_d_err_v_ = 1.0;
-    limit_d_err_a_ = 1.0;
+    // limit_err_p_ = 3.0;
+    // limit_err_v_ = 2.0;
+    // limit_err_a_ = 1.0;
+    // limit_d_err_p_ = 3.5;
+    // limit_d_err_v_ = 1.0;
+    // limit_d_err_a_ = 1.0;
 
-    hover_percent_ = 0.25;
-    max_hover_percent_ = 0.75;
+    // hover_percent_ = 0.25;
+    // max_hover_percent_ = 0.75;
 
     desired_state_.p(0) = 0.0;
     desired_state_.p(1) = 0.0;
