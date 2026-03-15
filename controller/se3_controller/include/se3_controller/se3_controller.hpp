@@ -444,7 +444,7 @@ public:
 			double gamma = 1 / (rho_ + thr * P_ * thr);
 			double K = gamma * P_ * thr;
 			T_a_ = T_a_ + K * (est_a(2) - thr * T_a_);
-			std:: cout << "Hover Thrust: " << T_a_ << std::endl;
+			// std:: cout << "Hover Thrust: " << T_a_ << std::endl;
 			P_ = (1 - K * thr) * P_ / rho_;
 			T_a_ = std::max(T_a_, gravity_ / max_hover_percent_);
 			// printf("%6.3f,%6.3f,%6.3f,%6.3f\n", T_a_, gamma, K, P_);
