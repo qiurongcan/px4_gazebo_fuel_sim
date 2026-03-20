@@ -33,6 +33,7 @@ se3Ctrl::se3Ctrl(const ros::NodeHandle &nh):nh_(nh)
     state_sub_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &se3Ctrl::StateCallback, this);
     desire_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/desire_odom", 10, &se3Ctrl::DesireOdomCallback, this);
     multiDOFJoint_sub_ = nh_.subscribe("/command/trajectory", 10, &se3Ctrl::multiDOFJointCallback, this);
+    planning_pos_cmd_sub_ = nh_.subscribe("/planning/pos_cmd", 10, &se3Ctrl::planningPosCmdCallback, this);
 
     // 3 循环主函数
     exec_timer_ = nh_.createTimer(ros::Duration(0.01), &se3Ctrl::execFSMCallback, this);
@@ -297,5 +298,34 @@ void se3Ctrl::multiDOFJointCallback(const trajectory_msgs::MultiDOFJointTrajecto
     desired_state_.q.z() = pt.transforms[0].rotation.z;
 
     desired_state_.yaw = utils::fromQuaternion2yaw(desired_state_.q);
+    desired_state_.yaw_rate = 0.0;
+}
+
+
+void se3Ctrl::planningPosCmdCallback(const quadrotor_msgs::PositionCommand &msg){
+    last_traj_rcv_time_ = ros::Time::now(); // <--- 更新接收时间：收到新指令了
+
+    // 接收到消息
+
+    desired_state_.p(0) = msg.position.x;
+    desired_state_.p(1) = msg.position.y;
+    desired_state_.p(2) = msg.position.z;
+
+    desired_state_.v(0) = msg.velocity.x;
+    desired_state_.v(1) = msg.velocity.y;
+    desired_state_.v(2) = msg.velocity.z;
+
+    desired_state_.a.setZero();
+    desired_state_.j.setZero();
+
+    geometry_msgs::Transform transform_q;
+    transform_q.rotation = tf::createQuaternionMsgFromYaw(msg.yaw);
+
+    desired_state_.q.w() = transform_q.rotation.w;
+    desired_state_.q.x() = transform_q.rotation.x;
+    desired_state_.q.y() = transform_q.rotation.y;
+    desired_state_.q.z() = transform_q.rotation.z;
+
+    desired_state_.yaw = msg.yaw;
     desired_state_.yaw_rate = 0.0;
 }

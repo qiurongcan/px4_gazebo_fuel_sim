@@ -2,18 +2,18 @@
 <launch>
   <node pkg="se3_controller" type="se3_controller_node" name="se3_controller_node" output="screen">
     <param name="enable_sim" value="false" />
-    <param name="takeoff_height" value="1.5" />
+    <param name="takeoff_height" value="1.0" />
     <param name="geo_fence/x" value="50.0"/>
     <param name="geo_fence/y" value="50.0"/>
     <param name="geo_fence/z" value="8.0"/>
     
     <!-- 油门设置 -->
-    <param name="hover_percent" value="0.25"/>
-    <param name="max_hover_percent" value="0.90"/>
+    <param name="hover_percent" value="0.15"/>
+    <param name="max_hover_percent" value="0.50"/>
 
     <!-- PID 超参数设置 -->
     <!-- P -->
-    <rosparam param="kp_p">[0.85, 0.85, 1.45]</rosparam> <!--超调严重则调小-->
+    <rosparam param="kp_p">[0.85, 0.85, 0.9]</rosparam> <!--超调严重则调小-->
     <rosparam param="kp_v">[1.5, 1.5, 1.5]</rosparam>
     <rosparam param="kp_a">[1.5, 1.5, 1.5]</rosparam>
     <rosparam param="kp_q">[5.5, 5.5, 0.1]</rosparam>

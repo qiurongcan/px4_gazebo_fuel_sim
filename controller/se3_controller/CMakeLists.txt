@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   dynamic_reconfigure
+  quadrotor_msgs
   math_utils
   # airsim_ros_pkgs
 )

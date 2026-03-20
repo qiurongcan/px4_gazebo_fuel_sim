@@ -13,6 +13,10 @@
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <tf/transform_datatypes.h> // 用于四元数转换
+
+
+#include <quadrotor_msgs/PositionCommand.h> // 订阅ego_planner消息格式
 
 #include "se3_controller/se3_controller.hpp"
 #include "se3_controller/se3_dynamic_tuneConfig.h"
@@ -26,7 +30,7 @@ private:
     ros::NodeHandle nh_;
     ros::Publisher cmd_pub_, desire_odom_pub_, local_pos_pub_;
     ros::Subscriber odom_sub_, imu_sub_, state_sub_;
-    ros::Subscriber desire_odom_sub_, desire_angle_sub_, multiDOFJoint_sub_;
+    ros::Subscriber desire_odom_sub_, desire_angle_sub_, multiDOFJoint_sub_, planning_pos_cmd_sub_;
     ros::ServiceClient set_mode_client_;
     ros::ServiceClient arming_client_;
     ros::ServiceServer land_service_;
@@ -67,6 +71,7 @@ private:
     void StateCallback(const mavros_msgs::State::ConstPtr &msg);
     void DesireOdomCallback(const nav_msgs::Odometry::ConstPtr &msg);
     void multiDOFJointCallback(const trajectory_msgs::MultiDOFJointTrajectory &msg);
+    void planningPosCmdCallback(const quadrotor_msgs::PositionCommand &msg);
 
 
     void DynamicTuneCallback(se3_controller::se3_dynamic_tuneConfig &config, uint32_t level){
