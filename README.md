@@ -4,31 +4,28 @@
  * @@encoding: utf-8
  * @@Author: qiurongcan
  * @Date: 2025-12-04 16:23:54
- * @LastEditTime: 2025-12-09 18:05:21
+ * @LastEditTime: 2026-03-20 18:29:26
 -->
 
 # px4_gazebo_fuel_sim
 
+|分支|说明|备注|
+|---|---|---|
+|main|主要的仿真分支||
+|real_exp|实机实验分支代码||
+|old_stable_version|古早的稳定版分支实机和仿真||
+
 本仓库基于PX4和gazebo的仿真环境下，使用fastlio定位以及fuel未知环境自主探索路径算法
 ```shell
 实验流程:
-启动px4仿真环境 ---> 启动Fast LIO定位 ---> 启动无人机起飞脚本 ---> 使用FUEL自动探索脚本
+1 启动px4仿真环境
+2 启动Fast LIO定位
+3 FastLIO定位 转 Px4
+4 启动se3控制器
+5 启动 fuel 脚本
+6 [操作] 手动/脚本 切换OFFBOARD模式 无人机自动起飞
+7 [操作] rviz选点 / rostopic 发布move_base
 ```
-## 特别说明
-如果想要做实机实验的话，流程大概如下
-1. 先给无人机上电，启动`roslaunch mavros px4.launch`
-2. 启动Fastlio，`roslaunch fast_lio mapping_mid360.launch`
-3. 将fastlio的定位信息传给px4无人机`/mavros/vision_pose/pose`，需要用转化节点`roslaunch camera_pose_node pose_tf.launch`
-4. 这个时候手动起飞无人机，先遥控器切换到position模式，然后遥控器解锁，遥控器操作无人机起飞并悬停
-5. 无人机起飞后，执行fuel的代码，`roslaunch exploration_manger exploration_manger.launch`,出现一个rviz界面，这个时候先不要动
-6. 执行控制脚本`rosrun exploration_manger fuel_nav`
-7. 前面这些操作没有问题后，遥控器切换`OFFBOARD`模式，这个时候无人机会悬停在1m左右的高度
-8. 然后在rviz中选点，然后无人机就会开始自主探索了
-
-**注意！！！**
-1. 一定要有一个人手上拿着遥控器，如果要出现问题了，快速切换OFFBOARD模式，然后降落
-2. 或者及时断电，一定注意安全
-3. 注意如果遥控器切换position模式后没办法解锁，应该是定位出问题了。
 
 
 ## 仿真环境
@@ -60,7 +57,7 @@ sudo make install
 sudo apt-get install libdw-dev
 ```
 
-## PX4+MID360配置
+## 1 PX4+MID360配置
 
 参考仓库 `https://github.com/qiurongcan/Mid360_px4.git`中的配置方法进行配置，详细阅读
 
@@ -71,7 +68,7 @@ sudo apt-get install libdw-dev
 roslaunch px4 mavrox_posix_sitl.launch
 ```
 
-## FAST LIO2配置
+## 2 FAST LIO2配置
 
 可以参考Fast LIO原仓库 `https://github.com/hku-mars/FAST_LIO.git`进行配置，但是编译会有些报错，自己自行解决即可
 
@@ -90,7 +87,7 @@ source ./devel/setup.bash
 roslaunch fast_lio mapping_mid360.launch
 ```
 
-## FASTLIO为PX4无人机提供定位源
+## 2 FASTLIO为PX4无人机提供定位源
 
 这个节点的作用是转化FastLIO输出的 `/Odometry`话题为 `/mavros/vision_pose/pose`，给px4提供无GPS情况下的定位
 
@@ -127,16 +124,26 @@ source devel/setup.bash
 roslaunch camera_pose_node pose_tf.launch
 ```
 
-## 无人机自动起飞（仿真环境）
-将仓库中的`px4_real_control_examle`复制到`~/catkin_ws/src`目录下
+## 3 启动控制器
+将仓库中的`controller`复制到`~/catkin_ws/src`目录下
 ```shell
-cd ~/catkin_ws/src/px4_real_control_example/scripts/
+# 复制以后
+cd ~/catkin_ws/
+catkin_make
 # 执行起飞脚本
-python3 takeoff_and_park_vio.py
-# 等待一段时间，无人机自动起飞，这个时候不用管，运行FUEL代码这部分代码就会自动失效
+. devel/setup.bash
+roslaunch se3_controller sitl_se3_controller.launch
 ```
-**注意！注意！注意！等无人机起飞到指定位置再执行下一步代码。这个代码是模拟实机实验时手动起飞无人机**
-## FUEL配置
+
+**注意！注意！注意！** 做到这一步代码可以先测试一下
+```shell
+cd /path/to/controller/tools/
+python3 mode_switch.py OFFBOARD
+```
+此时会看到无人机自动起飞， 说明定位没有问题和控制器也没有问题
+
+
+## 4FUEL配置
 
 将这个仓库中的 `FUEL` 文件夹复制到 `~/catkin_ws/src/`目录下
 
@@ -150,9 +157,6 @@ catkin_make
 ```shell
 # 新建第一个终端 运行后出现一个rviz
 roslaunch exploration_manger exploration.launch
-
-# 新建第二个终端
-rosrun exploration_manger fuel_nav
 ```
 之后在弹出的RVIZ中，使用2D Nav Goal 选择一个目标。程序就开始自主探索了
 
