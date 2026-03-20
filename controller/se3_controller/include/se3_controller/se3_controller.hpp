@@ -176,7 +176,7 @@ private:
 	double T_a_; // normalization constant
 	double P_ = 1e6;
 	const double rho_ = 0.998; // confidence
-	const double gravity_ = 9.81;
+	const double gravity_ = 9.806600;
 	static constexpr double kAlmostZeroValueThreshold_ = 0.001;
 	Eigen::Vector3d grav_vec_, last_err_p_, last_err_v_, last_err_a_, last_err_q_, last_err_w_;
 	std::queue<std::pair<ros::Time, double>> timed_thrust_;
@@ -314,6 +314,7 @@ public:
 		}
 		// desired_state.yaw = limitYaw(fromQuaternion2yaw(odom_data.q), desired_state.yaw, M_PI_2 / 3);
 		Eigen::Vector3d err_p = odom_data.p - desired_state.p;
+
 		limitErr(err_p, -limit_err_p_, limit_err_p_);
 		if(have_last_err_ == false)
 			last_err_p_ = err_p;
@@ -326,13 +327,19 @@ public:
 			last_err_v_ = err_v;
 		Eigen::Vector3d d_err_v = err_v - last_err_v_; // 计算速度误差
 		limitErr(d_err_v, -limit_d_err_v_, limit_d_err_v_);
+
+		// std::cout << "kp_v : " << Kp_v_;
+		// std::cout << " kd_v : " << Kd_v_ << std::endl;
 		desired_state.a = desired_state.a - Kp_v_.asDiagonal() * err_v - Kd_v_.asDiagonal() * d_err_v + grav_vec_;
+		// std::cout << "x: " << err_v.x() << " y: " << err_v.y() << " z: " << err_v.z() <<std::endl;
+		// std::cout << "x: " << desired_state.a.x() << " y: " << desired_state.a.y() << " z: " << desired_state.a.z() <<std::endl;
 		// std::cout << "err_p: " << err_p.transpose() << std::endl;
 		// std::cout << "err_v: " << err_v.transpose() << std::endl;
 		// std::cout << "imu_data.a: " << imu_data.a.transpose() << std::endl;
 		// std::cout << "odom_data.v: " << odom_data.v.transpose() << std::endl;
 		Eigen::Vector3d a_world = odom_data.q.toRotationMatrix() * imu_data.a;
 		Eigen::Vector3d err_a = a_world - desired_state.a;
+		// std::cout << "ERR_a: " << err_a.z() << std::endl;
 		limitErr(err_a, -limit_err_a_, limit_err_a_);
 		if(have_last_err_ == false)
 			last_err_a_ = err_a;
@@ -346,8 +353,6 @@ public:
 		
 		double thr = desired_state.a.transpose() * (odom_data.q * Eigen::Vector3d::UnitZ());
 		output.thrust = thr / T_a_;
-		// std::cout << std::endl << "desired_state.a: " << desired_state.a.transpose() << std::endl;
-		// std::cout << "odom_v: " << odom_data.v.transpose() << std::endl;
 		
 		Odom_Data_t desired_odom;
 		// computeFlatInput(desired_state, desired_odom);
@@ -379,40 +384,9 @@ public:
 			output.q = q_mid * output.q * q_mid;
 			output.bodyrates = q_mid * output.bodyrates;
 		}
-	
-		// Eigen::Quaterniond err_q = odom_data.q * (desired_odom.q.inverse());
-		// // limitErr(err_q, -1.0, 1.0);
-		// // Eigen::Vector3d err_w = odom_data.w - odom_data.q.matrix().transpose() * desired_odom.q.matrix() * desired_odom.w;
-		// Eigen::Vector3d err_w = odom_data.w - desired_odom.w;
-		// limitErr(err_w, -1.0, 1.0);
-		// if(have_last_err_ == false){
-		// 	have_last_err_ = true;
-		// 	last_err_q_ = err_q.vec();
-		// 	last_err_w_ = err_w;
-		// }
-		// Eigen::Vector3d d_err_q = err_q.vec() - last_err_q_;
-		// limitErr(d_err_q, -1.0, 1.0);
-		// Eigen::Vector3d d_err_w = err_w - last_err_w_;
-		// limitErr(d_err_w, -1.0, 1.0);
-		// if (err_q.w() >= 0){
-		// 	output.bodyrates = desired_odom.w - Kp_q_.asDiagonal() * err_q.vec() - Kp_w_.asDiagonal() * err_w - Kd_q_.asDiagonal() * d_err_q - Kd_w_.asDiagonal() * d_err_w;
-		// 	// err_br.x() = Kp_q_(0) * err_q.x();
-		// 	// err_br.y() = Kp_q_(1) * err_q.y();
-		// 	// err_br.z() = Kp_q_(2) * err_q.z();
-		// }
-		// else{
-		// 	output.bodyrates = desired_odom.w + Kp_q_.asDiagonal() * err_q.vec() - Kp_w_.asDiagonal() * err_w + Kd_q_.asDiagonal() * d_err_q - Kd_w_.asDiagonal() * d_err_w;
-		// 	// err_br.x() = -Kp_q_(0) * err_q.x();
-		// 	// err_br.y() = -Kp_q_(1) * err_q.y();
-		// 	// err_br.z() = -Kp_q_(2) * err_q.z();
-		// }
-		// // std::cout << "thrust: " << output.thrust << std::endl;
-		// // std::cout << "bodyrates: " << output.bodyrates.transpose() << std::endl;
-		// last_err_q_ = err_q.vec();
-		// last_err_w_ = err_w;
 
 		timed_thrust_.push(std::pair<ros::Time, double>(ros::Time::now(), output.thrust));
-		while (timed_thrust_.size() > 100)
+		while (timed_thrust_.size() > 40)
 			timed_thrust_.pop();
 		return true;
 	}
